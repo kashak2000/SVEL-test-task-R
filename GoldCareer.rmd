@@ -1,0 +1,158 @@
+---
+title: "Отчет о проделанной работе"
+author: "Ушаков Николай"
+date: "18.10.2020"
+navigation: frame
+fontsize: 12pt
+output:
+  pdf_document:
+    keep_tex: yes
+    fig_width: 7
+    fig_caption: yes
+    latex_engine: pdflatex
+lang: ru-RU, eu-US
+babel-lang: russian, english
+fontenc: T2A
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r, include=FALSE}
+library(ggplot2) ## Визуализация
+library(dplyr,warn.conflicts = FALSE) ## Манимуляции даннными
+library(GGally)
+library(mice) ## Обучение 
+library(rpart)  ## Визуализация
+library(rpart.plot)  ## Визуализация
+```
+
+
+\newpage
+
+# Задание 1 
+## Загрузка данных
+
+Из статистики  ниже мы видим, что переменные **Survived** , **Pclass** , **Name**, **Sex**, **Parch**, **Ticket**, **Cabin**, **Embarked** относятся к категориальным 
+
+**Age**, **SibSp**, **Fare** -- к количественным 
+
+```{r  echo=FALSE}
+df <- read.csv(file = "Dataset_for_student-1.csv", header = TRUE)
+str(df)
+```
+## Пропуски
+Из количественных переменных **177** пропусков у переменной **Age**, 
+а из категориальных переменных больше всего пропусков у переменной **Cabin** - **687** 
+```{r}
+colSums(is.na(df))
+```
+```{r}
+colSums(df=="")
+```
+Для задачи классификации Titanic целевой преременной является Survived 
+Переменная Cabin из-за огромного количества пропусков может быть удалена
+\newpage
+
+# Задание 2 
+
+Гистограмма Survived (0-не выжил, 1-выжил)
+
+```{r fig.align="center", echo=FALSE}
+ggplot(df, aes(x = factor(Survived), fill = factor(Survived))) + 
+geom_bar() + 
+geom_text(aes(label = stat(count)), stat='count', vjust = -0.5, color = "black", size = 3) + 
+xlab("Survived") + theme_classic() +  theme(legend.position="none")
+```
+\newpage
+
+# Задание 3 
+
+Гистограмма по признаку Sex (male - мужчины, female - женщины)
+
+```{r fig.align="center", echo=FALSE}
+ggplot(df, aes(x = Sex, fill = factor(Sex))) + 
+  geom_bar() + 
+  geom_text(aes(label = stat(count)),stat='count', vjust = -0.5, 
+            color = "black", size = 3) +
+   theme_classic() +  theme(legend.position="none")
+```
+\newpage
+# Задание 4
+
+Таблица сопряженности по Sex и Survived 
+
+```{r text.align="center", echo=FALSE}
+table(factor(df$Survived), factor(df$Sex))
+```
+\newpage
+
+# Задание 5 
+
+Гистограмма, отражающая количество выживших и невыживших в зависимости от класса 
+
+```{r fig.align="center", echo=FALSE}
+ggplot(df, aes(x = factor(Survived), group = Pclass, fill = factor(..x..))) + 
+  geom_bar(aes(y = ..prop..), stat="count") + labs(title  = "Pclass") +
+  geom_text(aes( label = scales::percent(..prop..), y= ..prop.. ), stat= "count", vjust = -0.5) +
+          scale_y_continuous(labels=scales::percent) +
+          ylab("percent of people") +
+          xlab("Survived") +
+          facet_grid(~Pclass) +
+ theme_classic() +  theme(legend.position="none")
+```
+\newpage
+
+# Задание 6
+
+```{r include=FALSE}
+df$age_group <- df$Age %/% 10 + 1
+df[,"age_group"] <- as.factor(df[,"age_group"])
+```
+
+Гистограмма, на которой видно количество выживших и невыживших в зависимости от возрастной категории 
+
+```{r fig.align="center", echo=FALSE}
+ggplot(data = subset(df, !is.na(df$age_group)), aes(x = factor(age_group), 
+                                                    fill = factor(Survived))) +
+geom_bar(position = position_dodge()) +
+geom_text(aes(label=stat(count)), stat='count', vjust = -0.5, color = "black", size = 3, position=position_dodge(width=1)) + 
+xlab("Group of age") +
+ theme_classic() +  theme(legend.position="none")
+```
+\newpage
+
+# Задание 7 
+`Заполниить пропуски в наборе данных можно многими способами:`
+
+- заполнение пропусков нулями
+- заполнение медианой
+- заполнение средним арифметическим значением
+- заполнение на основе регрессивной модели 
+
+Принято решение заполнить пропуски в поле Age, используя **классификатор случайного леса**
+
+```{r echo = FALSE, include=FALSE}
+miceMod <- mice(df[, !names(df) %in% c("Ticket", "Cabin", "Survived", "Pclass", "Sex")], method = "rf", seed = 256)
+mice_output <- complete(miceMod)
+```
+Гистограммы распределения переменной Age до и после заполнения пропусков 
+
+```{r  echo=FALSE}
+par(mfrow = c(1, 2))
+hist(df$Age, breaks = "Sturges",
+     freq = NULL, xlab = "Age", main =  "Histogram of Age before input")
+hist(mice_output$Age, breaks = "Sturges",
+     freq = NULL, xlab = "Age", main =  "Histogram of Age after input" )
+```
+
+```{r include=FALSE}
+#df$Age -> mice_output$Age
+#df$age_group -> mice_output$age_group
+```
+
+Таким образом, распределение Age меняется не так сильно в отличии от заполнения нулями, медианой или средним арифметическим 
+
+\newpage
+# Вложения 
+[Данные, используемые в задании](https://xn--80adjbxl0aeb4ii6a.xn--p1ai/wp-content/uploads/2020/08/Dataset_for_student-1.csv)
